@@ -1,0 +1,30 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.sqlite3
+*.log
+
+# Django
+backend/staticfiles/
+backend/media/
+
+# React / Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# ML
+backend/ml_model/*.pkl
+backend/ml_model/*.joblib
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
