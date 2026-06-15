@@ -22,6 +22,8 @@ class Appointment(models.Model):
     token_number = models.CharField(max_length=10, unique=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     estimated_wait = models.IntegerField(default=0)  # in minutes
+    reschedule_suggested = models.BooleanField(default=False)
+    rescheduled_time = models.TimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
