@@ -102,3 +102,94 @@ def call_next(request):
     queue_config.current_token = ''
     queue_config.save()
     return Response({'message': 'Queue is empty for today'})
+
+@api_view(['POST'])
+def add_delay(request):
+    delay_minutes = request.data.get('delay_minutes')
+
+    if delay_minutes is None:
+        return Response(
+            {'error': 'delay_minutes is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        delay_minutes = int(delay_minutes)
+    except ValueError:
+        return Response(
+            {'error': 'delay_minutes must be a number'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    queue_config = QueueConfig.get_instance()
+    queue_config.delay_added += delay_minutes
+    queue_config.save()
+
+    # recalculate wait time for all pending appointments today
+    from django.utils import timezone
+    today = str(timezone.now().date())
+    pending = Appointment.objects.filter(
+        appointment_date=today,
+        status='pending'
+    ).order_by('token_number')
+
+    RESCHEDULE_THRESHOLD = 60  # suggest reschedule if wait exceeds 60 minutes
+
+    for position, appointment in enumerate(pending, start=1):
+        new_wait = ((position - 1) * queue_config.average_service_time) + queue_config.delay_added
+        appointment.estimated_wait = new_wait
+        appointment.reschedule_suggested = new_wait > RESCHEDULE_THRESHOLD
+        appointment.save()
+
+    return Response({
+        'message': f'{delay_minutes} minutes delay added successfully',
+        'total_delay': queue_config.delay_added,
+        'affected_appointments': pending.count(),
+        'reschedule_threshold': RESCHEDULE_THRESHOLD,
+    })
+
+
+@api_view(['POST'])
+def reschedule_appointment(request, token_number):
+    try:
+        appointment = Appointment.objects.get(token_number=token_number)
+    except Appointment.DoesNotExist:
+        return Response(
+            {'error': 'Appointment not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if appointment.status != 'pending':
+        return Response(
+            {'error': 'Only pending appointments can be rescheduled'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # find next available slot — 1 hour after last appointment of the day
+    from datetime import datetime, timedelta
+    last_appointment = Appointment.objects.filter(
+        appointment_date=appointment.appointment_date
+    ).exclude(
+        token_number=token_number
+    ).order_by('-appointment_time').first()
+
+    if last_appointment:
+        last_time = datetime.combine(
+            appointment.appointment_date,
+            last_appointment.appointment_time
+        )
+        new_time = (last_time + timedelta(minutes=30)).time()
+    else:
+        new_time = appointment.appointment_time
+
+    appointment.status = 'rescheduled'
+    appointment.rescheduled_time = new_time
+    appointment.reschedule_suggested = False
+    appointment.save()
+
+    return Response({
+        'message': f'Appointment {token_number} rescheduled successfully',
+        'original_time': str(appointment.appointment_time),
+        'new_time': str(new_time),
+        'token_number': token_number,
+    })
