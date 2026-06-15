@@ -39,3 +39,22 @@ class Appointment(models.Model):
             ).count()
             self.token_number = f"A{str(count + 1).zfill(2)}"
         super().save(*args, **kwargs)
+
+
+class QueueConfig(models.Model):
+    current_token = models.CharField(max_length=10, default='')
+    average_service_time = models.IntegerField(default=10)  # minutes per appointment
+    delay_added = models.IntegerField(default=0)  # extra delay in minutes
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Queue Configuration'
+
+    def __str__(self):
+        return f"Queue - Current: {self.current_token}"
+
+    @classmethod
+    def get_instance(cls):
+        # Always returns the single queue config row, creates it if missing
+        instance, _ = cls.objects.get_or_create(id=1)
+        return instance
