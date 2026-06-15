@@ -93,3 +93,156 @@ button:disabled {
     border-radius: 6px;
     margin-bottom: 1rem;
 }
+
+/* Navigation */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+nav {
+    display: flex;
+    gap: 1rem;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    padding: 0.4rem 1rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+nav a:hover, nav a.active {
+    background: rgba(255,255,255,0.2);
+}
+
+/* Queue Status Page */
+.queue-status-page {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.queue-status-page h2 {
+    margin-bottom: 1.5rem;
+    color: #2563eb;
+}
+
+.serving-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #dbeafe;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+}
+
+.serving-banner strong {
+    font-size: 1.5rem;
+    color: #2563eb;
+}
+
+.my-token {
+    text-align: center;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.my-token.serving {
+    background: #dcfce7;
+    border: 2px solid #16a34a;
+}
+
+.my-token.waiting {
+    background: #f0f4f8;
+    border: 2px solid #2563eb;
+}
+
+.my-token.completed {
+    background: #f1f5f9;
+    border: 2px solid #94a3b8;
+}
+
+.my-token p {
+    margin: 0.4rem 0;
+}
+
+.reschedule-banner {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.reschedule-btn {
+    background: #f59e0b;
+    margin-top: 0.5rem;
+}
+
+.reschedule-btn:hover {
+    background: #d97706;
+}
+
+/* Queue Table */
+.queue-list {
+    margin-top: 1.5rem;
+}
+
+.queue-list h3 {
+    margin-bottom: 1rem;
+    color: #374151;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #374151;
+}
+
+tr.highlight {
+    background: #dbeafe;
+    font-weight: 600;
+}
+
+.queue-footer {
+    margin-top: 1.5rem;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.delay-notice {
+    color: #d97706;
+    font-weight: 500;
+    margin-top: 0.4rem;
+}
+
+.secondary-btn {
+    background: #64748b;
+    margin-top: 1rem;
+}
+
+.loading {
+    color: #64748b;
+    text-align: center;
+    margin-bottom: 1rem;
+}
