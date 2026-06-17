@@ -10,7 +10,6 @@ def book_appointment(request):
     serializer = AppointmentSerializer(data=request.data)
     if serializer.is_valid():
         appointment = serializer.save()
-        # calculate estimated wait time on booking
         queue_config = QueueConfig.get_instance()
         pending = Appointment.objects.filter(
             appointment_date=appointment.appointment_date,
@@ -20,7 +19,6 @@ def book_appointment(request):
         appointment.save()
         return Response(AppointmentSerializer(appointment).data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 @api_view(['GET'])
 def list_appointments(request):
@@ -58,6 +56,7 @@ def queue_status(request):
             'token_number': appointment.token_number,
             'name': appointment.name,
             'estimated_wait': wait_time,
+             'reschedule_suggested': appointment.reschedule_suggested,
         })
 
     return Response({
@@ -192,4 +191,47 @@ def reschedule_appointment(request, token_number):
         'original_time': str(appointment.appointment_time),
         'new_time': str(new_time),
         'token_number': token_number,
+    })
+
+
+@api_view(['GET'])
+def predict_wait_time(request):
+    service_type = request.query_params.get('service_type', 'general')
+    date_str = request.query_params.get('date', str(timezone.now().date()))
+
+    try:
+        from datetime import datetime
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+        hour = date_obj.hour if date_obj.hour != 0 else timezone.now().hour
+        day_of_week = date_obj.weekday()
+    except ValueError:
+        return Response(
+            {'error': 'Invalid date format. Use YYYY-MM-DD'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'ml_model'))
+        from predictor import predict_service_duration
+        predicted_duration = predict_service_duration(service_type, hour, day_of_week)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # count pending appointments to estimate position
+    pending_count = Appointment.objects.filter(
+        appointment_date=date_str,
+        status='pending'
+    ).count()
+
+    queue_config = QueueConfig.get_instance()
+    estimated_wait = (pending_count * predicted_duration) + queue_config.delay_added
+
+    return Response({
+        'service_type': service_type,
+        'predicted_service_duration': predicted_duration,
+        'pending_appointments': pending_count,
+        'estimated_wait': estimated_wait,
+        'note': 'AI-powered prediction based on service type and time of day'
     })
