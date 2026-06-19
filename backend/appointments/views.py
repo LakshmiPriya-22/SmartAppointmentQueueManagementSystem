@@ -235,3 +235,32 @@ def predict_wait_time(request):
         'estimated_wait': estimated_wait,
         'note': 'AI-powered prediction based on service type and time of day'
     })
+
+
+@api_view(['POST'])
+def reset_delay(request):
+    queue_config = QueueConfig.get_instance()
+    queue_config.delay_added = 0
+    queue_config.save()
+
+    # reset estimated wait for all pending appointments today
+    from django.utils import timezone
+    today = str(timezone.now().date())
+    pending = Appointment.objects.filter(
+        appointment_date=today,
+        status='pending'
+    ).order_by('token_number')
+
+    for position, appointment in enumerate(pending, start=1):
+        new_wait = (position - 1) * queue_config.average_service_time
+        appointment.estimated_wait = new_wait
+        appointment.reschedule_suggested = False
+        appointment.save()
+
+    return Response({
+        'message': 'Delay reset successfully',
+        'total_delay': 0,
+        'affected_appointments': pending.count()
+    })
+
+    
