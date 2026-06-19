@@ -441,3 +441,31 @@ tr.highlight {
         grid-template-columns: 1fr;
     }
 }
+
+.prediction-box {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+}
+
+.prediction-box p {
+    margin: 0.3rem 0;
+    color: #1e40af;
+}
+
+.admin-login {
+    max-width: 400px;
+    margin: 3rem auto;
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.admin-login h2 {
+    color: #2563eb;
+    margin-bottom: 1.5rem;
+}
