@@ -28,3 +28,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# ML
+backend/ml_model/*.pkl
+backend/ml_model/training_data.csv
