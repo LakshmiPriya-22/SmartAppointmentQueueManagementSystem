@@ -17,3 +17,8 @@ export const addDelay = (minutes) => api.post('/add-delay/', { delay_minutes: mi
 export const rescheduleAppointment = (token) => api.post(`/reschedule/${token}/`)
 
 export default api
+
+export const predictWaitTime = (serviceType, date) =>
+    api.get(`/predict-wait/?service_type=${serviceType}&date=${date}`)
+
+export const resetDelay = () => api.post('/reset-delay/')
