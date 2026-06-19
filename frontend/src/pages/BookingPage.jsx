@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { bookAppointment } from '../services/api'
+import { bookAppointment, predictWaitTime } from '../services/api'
 
 const SERVICE_OPTIONS = [
     { value: 'general', label: 'General' },
@@ -21,13 +21,67 @@ export default function BookingPage() {
     const [token, setToken] = useState(null)
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
+    const [prediction, setPrediction] = useState(null)
+    const [validationErrors, setValidationErrors] = useState({})
+
+    const fetchPrediction = async (serviceType, date) => {
+        if (!serviceType || !date) return
+        try {
+            const response = await predictWaitTime(serviceType, date)
+            setPrediction(response.data)
+        } catch {
+            // silently fail — prediction is optional
+        }
+    }
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value })
+        const updated = { ...formData, [e.target.name]: e.target.value }
+        setFormData(updated)
+        if (
+            (e.target.name === 'service_type' || e.target.name === 'appointment_date') &&
+            updated.service_type &&
+            updated.appointment_date
+        ) {
+            fetchPrediction(updated.service_type, updated.appointment_date)
+        }
+    }
+
+    const validate = () => {
+        const errors = {}
+
+        if (formData.name.trim().length < 2) {
+            errors.name = 'Name must be at least 2 characters'
+        }
+
+        if (!/^\d{10}$/.test(formData.phone)) {
+            errors.phone = 'Phone number must be exactly 10 digits'
+        }
+
+        const today = new Date().toISOString().split('T')[0]
+        if (formData.appointment_date < today) {
+            errors.appointment_date = 'Appointment date cannot be in the past'
+        }
+
+        if (formData.appointment_time) {
+            const hour = parseInt(formData.appointment_time.split(':')[0])
+            if (hour < 8 || hour >= 18) {
+                errors.appointment_time = 'Appointments only available between 8:00 AM and 6:00 PM'
+            }
+        }
+
+        return errors
     }
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+        if (loading) return
+
+        const errors = validate()
+        if (Object.keys(errors).length > 0) {
+            setValidationErrors(errors)
+            return
+        }
+        setValidationErrors({})
         setLoading(true)
         setError(null)
         try {
@@ -42,6 +96,8 @@ export default function BookingPage() {
 
     const handleReset = () => {
         setToken(null)
+        setPrediction(null)
+        setValidationErrors({})
         setFormData({
             name: '',
             phone: '',
@@ -81,7 +137,11 @@ export default function BookingPage() {
                         required
                         placeholder="Enter your full name"
                     />
+                    {validationErrors.name && (
+                        <span className="field-error">{validationErrors.name}</span>
+                    )}
                 </div>
+
                 <div className="form-group">
                     <label>Phone Number</label>
                     <input
@@ -90,9 +150,13 @@ export default function BookingPage() {
                         value={formData.phone}
                         onChange={handleChange}
                         required
-                        placeholder="Enter your phone number"
+                        placeholder="Enter 10-digit phone number"
                     />
+                    {validationErrors.phone && (
+                        <span className="field-error">{validationErrors.phone}</span>
+                    )}
                 </div>
+
                 <div className="form-group">
                     <label>Service Type</label>
                     <select name="service_type" value={formData.service_type} onChange={handleChange}>
@@ -101,6 +165,7 @@ export default function BookingPage() {
                         ))}
                     </select>
                 </div>
+
                 <div className="form-group">
                     <label>Date</label>
                     <input
@@ -109,8 +174,13 @@ export default function BookingPage() {
                         value={formData.appointment_date}
                         onChange={handleChange}
                         required
+                        min={new Date().toISOString().split('T')[0]}
                     />
+                    {validationErrors.appointment_date && (
+                        <span className="field-error">{validationErrors.appointment_date}</span>
+                    )}
                 </div>
+
                 <div className="form-group">
                     <label>Time</label>
                     <input
@@ -119,8 +189,22 @@ export default function BookingPage() {
                         value={formData.appointment_time}
                         onChange={handleChange}
                         required
+                        min="08:00"
+                        max="18:00"
                     />
+                    {validationErrors.appointment_time && (
+                        <span className="field-error">{validationErrors.appointment_time}</span>
+                    )}
                 </div>
+
+                {prediction && (
+                    <div className="prediction-box">
+                        <p>🤖 AI Prediction</p>
+                        <p>Estimated service time: <strong>{prediction.predicted_service_duration} minutes</strong></p>
+                        <p>Estimated wait when you arrive: <strong>{prediction.estimated_wait} minutes</strong></p>
+                    </div>
+                )}
+
                 <button type="submit" disabled={loading}>
                     {loading ? 'Booking...' : 'Book Appointment'}
                 </button>
