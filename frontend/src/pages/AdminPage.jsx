@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { getQueueStatus, callNext, addDelay } from '../services/api'
+import { getQueueStatus, callNext, addDelay, resetDelay } from '../services/api'
 
 export default function AdminPage() {
+    const [authenticated, setAuthenticated] = useState(false)
+    const [passwordInput, setPasswordInput] = useState('')
+    const [authError, setAuthError] = useState(false)
     const [date, setDate] = useState(new Date().toISOString().split('T')[0])
     const [queueData, setQueueData] = useState(null)
     const [loading, setLoading] = useState(false)
@@ -9,6 +12,8 @@ export default function AdminPage() {
     const [delayInput, setDelayInput] = useState('')
     const [error, setError] = useState(null)
     const intervalRef = useRef(null)
+
+    const ADMIN_PASSWORD = 'admin123'
 
     const fetchQueue = async () => {
         try {
@@ -21,11 +26,22 @@ export default function AdminPage() {
     }
 
     useEffect(() => {
+        if (!authenticated) return
         setLoading(true)
         fetchQueue().finally(() => setLoading(false))
         intervalRef.current = setInterval(fetchQueue, 5000)
         return () => clearInterval(intervalRef.current)
-    }, [date])
+    }, [date, authenticated])
+
+    const handleLogin = (e) => {
+        e.preventDefault()
+        if (passwordInput === ADMIN_PASSWORD) {
+            setAuthenticated(true)
+            setAuthError(false)
+        } else {
+            setAuthError(true)
+        }
+    }
 
     const handleCallNext = async () => {
         try {
@@ -55,24 +71,67 @@ export default function AdminPage() {
         setTimeout(() => setActionMessage(null), 3000)
     }
 
+    const handleResetDelay = async () => {
+        if (!window.confirm('Reset all delays to 0? This will recalculate all wait times.')) return
+        try {
+            const response = await resetDelay()
+            setActionMessage({ type: 'success', text: response.data.message })
+            fetchQueue()
+        } catch {
+            setActionMessage({ type: 'error', text: 'Failed to reset delay.' })
+        }
+        setTimeout(() => setActionMessage(null), 3000)
+    }
+
+    if (!authenticated) {
+        return (
+            <div className="admin-login">
+                <h2>Admin Login</h2>
+                <form onSubmit={handleLogin}>
+                    <div className="form-group">
+                        <label>Password</label>
+                        <input
+                            type="password"
+                            value={passwordInput}
+                            onChange={(e) => setPasswordInput(e.target.value)}
+                            placeholder="Enter admin password"
+                            required
+                        />
+                    </div>
+                    {authError && (
+                        <div className="error">Incorrect password. Try again.</div>
+                    )}
+                    <button type="submit">Login</button>
+                </form>
+            </div>
+        )
+    }
+
     return (
         <div className="admin-page">
             <div className="admin-header">
                 <h2>Admin Dashboard</h2>
-                <div className="date-selector">
-                    <label>Date: </label>
-                    <input
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                    />
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div className="date-selector">
+                        <label>Date: </label>
+                        <input
+                            type="date"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                        />
+                    </div>
+                    <button
+                        onClick={() => setAuthenticated(false)}
+                        style={{ width: 'auto', padding: '0.4rem 1rem', background: '#dc2626' }}
+                    >
+                        Logout
+                    </button>
                 </div>
             </div>
 
             {error && <div className="error">{error}</div>}
             {loading && <p className="loading">Loading...</p>}
 
-            {/* Action message */}
             {actionMessage && (
                 <div className={`action-message ${actionMessage.type}`}>
                     {actionMessage.text}
@@ -81,7 +140,6 @@ export default function AdminPage() {
 
             {queueData && (
                 <>
-                    {/* Stats Row */}
                     <div className="stats-row">
                         <div className="stat-card">
                             <span className="stat-label">Now Serving</span>
@@ -99,9 +157,7 @@ export default function AdminPage() {
                         </div>
                     </div>
 
-                    {/* Controls */}
                     <div className="admin-controls">
-                        {/* Call Next */}
                         <div className="control-card">
                             <h3>Queue Control</h3>
                             <p>Currently serving: <strong>{queueData.current_token || 'None'}</strong></p>
@@ -117,7 +173,6 @@ export default function AdminPage() {
                             </button>
                         </div>
 
-                        {/* Add Delay */}
                         <div className="control-card">
                             <h3>Add Delay</h3>
                             <p>Current total delay: <strong>{queueData.delay_added} minutes</strong></p>
@@ -132,13 +187,20 @@ export default function AdminPage() {
                                 />
                                 <button type="submit">Add Delay</button>
                             </form>
+                            {queueData.delay_added > 0 && (
+                                <button
+                                    onClick={handleResetDelay}
+                                    style={{ background: '#dc2626', marginTop: '0.5rem' }}
+                                >
+                                    Reset Delay to 0
+                                </button>
+                            )}
                             <p className="hint">
                                 ⚠️ Appointments waiting 60+ mins will be flagged for reschedule
                             </p>
                         </div>
                     </div>
 
-                    {/* Queue Table */}
                     <div className="admin-queue-table">
                         <h3>Today's Queue</h3>
                         {queueData.queue.length === 0 ? (
