@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getQueueStatus, callNext, addDelay, resetDelay } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 export default function AdminPage() {
-    const [authenticated, setAuthenticated] = useState(false)
-    const [passwordInput, setPasswordInput] = useState('')
-    const [authError, setAuthError] = useState(false)
     const [date, setDate] = useState(new Date().toISOString().split('T')[0])
     const [queueData, setQueueData] = useState(null)
     const [loading, setLoading] = useState(false)
@@ -12,8 +11,8 @@ export default function AdminPage() {
     const [delayInput, setDelayInput] = useState('')
     const [error, setError] = useState(null)
     const intervalRef = useRef(null)
-
-    const ADMIN_PASSWORD = 'admin123'
+    const { user, logout } = useAuth()
+    const navigate = useNavigate()
 
     const fetchQueue = async () => {
         try {
@@ -26,22 +25,11 @@ export default function AdminPage() {
     }
 
     useEffect(() => {
-        if (!authenticated) return
         setLoading(true)
         fetchQueue().finally(() => setLoading(false))
         intervalRef.current = setInterval(fetchQueue, 5000)
         return () => clearInterval(intervalRef.current)
-    }, [date, authenticated])
-
-    const handleLogin = (e) => {
-        e.preventDefault()
-        if (passwordInput === ADMIN_PASSWORD) {
-            setAuthenticated(true)
-            setAuthError(false)
-        } else {
-            setAuthError(true)
-        }
-    }
+    }, [date])
 
     const handleCallNext = async () => {
         try {
@@ -83,28 +71,9 @@ export default function AdminPage() {
         setTimeout(() => setActionMessage(null), 3000)
     }
 
-    if (!authenticated) {
-        return (
-            <div className="admin-login">
-                <h2>Admin Login</h2>
-                <form onSubmit={handleLogin}>
-                    <div className="form-group">
-                        <label>Password</label>
-                        <input
-                            type="password"
-                            value={passwordInput}
-                            onChange={(e) => setPasswordInput(e.target.value)}
-                            placeholder="Enter admin password"
-                            required
-                        />
-                    </div>
-                    {authError && (
-                        <div className="error">Incorrect password. Try again.</div>
-                    )}
-                    <button type="submit">Login</button>
-                </form>
-            </div>
-        )
+    const handleLogout = () => {
+        logout()
+        navigate('/login')
     }
 
     return (
@@ -112,6 +81,9 @@ export default function AdminPage() {
             <div className="admin-header">
                 <h2>Admin Dashboard</h2>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <span style={{ color: '#64748b', fontSize: '0.9rem' }}>
+                        👤 {user?.first_name} {user?.last_name}
+                    </span>
                     <div className="date-selector">
                         <label>Date: </label>
                         <input
@@ -121,7 +93,7 @@ export default function AdminPage() {
                         />
                     </div>
                     <button
-                        onClick={() => setAuthenticated(false)}
+                        onClick={handleLogout}
                         style={{ width: 'auto', padding: '0.4rem 1rem', background: '#dc2626' }}
                     >
                         Logout
